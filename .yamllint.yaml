@@ -1,0 +1,18 @@
+---
+extends: default
+rules:
+  line-length:
+    max: 160
+    level: warning
+  comments:
+    min-spaces-from-content: 1
+  # Allow intentional column alignment (e.g. requests:/limits: blocks).
+  colons:
+    max-spaces-after: -1
+  commas:
+    max-spaces-after: -1
+  document-start: disable
+  truthy:
+    check-keys: false
+ignore: |
+  platform/values/

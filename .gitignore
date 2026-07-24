@@ -1,0 +1,33 @@
+# Secrets / local state — never commit real credentials
+.env
+*.env
+!*.env.example
+secrets/*.yaml
+!secrets/*.example.yaml
+kubeconfig
+*.kubeconfig
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Go
+apps/sample-api/bin/
+apps/sample-api/vendor/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Generated RCA reports (keep the checked-in sample only)
+rca-reports/
+!sample-rca-report.md
