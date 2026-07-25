@@ -1,0 +1,45 @@
+---
+# Namespaces are the primary isolation boundary. Each carries Pod Security
+# Standards labels (enforced at admission) and a shared ownership label.
+# "restricted" is the target for our own workloads; the observability and
+# temporal stacks need "baseline"/"privileged" for host log mounts and
+# init behaviours in their upstream charts.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    app.kubernetes.io/part-of: sre-platform
+    pod-security.kubernetes.io/enforce: privileged   # otel filelog tails host paths
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: temporal
+  labels:
+    app.kubernetes.io/part-of: sre-platform
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sample-api
+  labels:
+    app.kubernetes.io/part-of: sre-platform
+    pod-security.kubernetes.io/enforce: restricted   # our code meets the strict bar
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-sre
+  labels:
+    app.kubernetes.io/part-of: sre-platform
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
