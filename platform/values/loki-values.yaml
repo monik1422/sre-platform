@@ -1,0 +1,49 @@
+# Loki — single-binary deployment for a single-node lab. Filesystem storage,
+# native OTLP ingestion enabled so the OTel Collector can push logs directly.
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+  limits_config:
+    retention_period: 72h
+    allow_structured_metadata: true
+    volume_enabled: true
+  # Accept OTLP logs at /otlp/v1/logs (used by the Collector's loki exporter).
+  # No extra config needed in recent Loki; the endpoint is on by default.
+
+singleBinary:
+  replicas: 1
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits:   {cpu: 500m, memory: 512Mi}
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 5Gi
+
+# Disable the scalable-mode components we don't run in single-binary mode.
+backend:  {replicas: 0}
+read:     {replicas: 0}
+write:    {replicas: 0}
+gateway:  {enabled: false}
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+lokiCanary:
+  enabled: false
+test:
+  enabled: false

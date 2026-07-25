@@ -1,0 +1,28 @@
+---
+# Tempo — distributed tracing backend (the "T" in LGTM). Single-binary,
+# receives OTLP from the OTel Collector; filesystem storage for local.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tempo
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: platform
+  sources:
+    - repoURL: "https://grafana.github.io/helm-charts"
+      chart: tempo
+      targetRevision: 1.10.3
+      helm:
+        releaseName: tempo
+        valueFiles:
+          - $values/platform/values/tempo-values.yaml
+    - repoURL: "https://github.com/monik1422/sre-platform.git"
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}

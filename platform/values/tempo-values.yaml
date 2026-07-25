@@ -1,0 +1,34 @@
+# Tempo — single-binary tracing backend. Receives OTLP from the Collector.
+tempo:
+  retention: 72h
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  # Generate RED span metrics + service graph so Grafana's "Service Graph"
+  # and the AI SRE agent can reason about inter-service latency.
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://kube-prometheus-stack-prometheus.observability.svc:9090/api/v1/write"
+
+resources:
+  requests: {cpu: 100m, memory: 256Mi}
+  limits:   {cpu: 500m, memory: 512Mi}
+
+persistence:
+  enabled: true
+  storageClassName: local-path
+  size: 5Gi
+
+serviceMonitor:
+  enabled: true

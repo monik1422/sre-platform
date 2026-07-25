@@ -1,0 +1,109 @@
+# kube-prometheus-stack values — tuned for a single-node k3s lab while keeping
+# production-shaped defaults (resource limits, retention, discovery selectors).
+fullnameOverride: kube-prometheus-stack
+
+# ---------------------------------------------------------------------------
+# Prometheus
+# ---------------------------------------------------------------------------
+prometheus:
+  prometheusSpec:
+    retention: 12h
+    retentionSize: 4GB
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+    # Accept remote_write so Tempo's metrics-generator can push RED span metrics.
+    enableRemoteWriteReceiver: true
+    # Discover ServiceMonitors / PodMonitors / PrometheusRules from ANY namespace
+    # regardless of the Helm release label. Single-tenant lab convenience;
+    # in a multi-tenant cluster you would scope these with label selectors.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    resources:
+      requests: {cpu: 100m, memory: 512Mi}
+      limits:   {cpu: "1",  memory: 1Gi}
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+
+# ---------------------------------------------------------------------------
+# Alertmanager
+# ---------------------------------------------------------------------------
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests: {cpu: 25m, memory: 64Mi}
+      limits:   {cpu: 100m, memory: 128Mi}
+  config:
+    route:
+      receiver: "default"
+      group_by: ["namespace", "alertname"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 3h
+      routes:
+        - matchers: ['severity = "page"']
+          receiver: "default"
+    receivers:
+      # In production this fans out to PagerDuty/Opsgenie/Slack. Locally the
+      # AI SRE agent watches the Alertmanager API directly, so a null-ish
+      # receiver is enough to keep alerts flowing and visible in the UI.
+      - name: "default"
+
+# ---------------------------------------------------------------------------
+# Grafana — the single pane of glass across metrics, logs, and traces.
+# Datasources & dashboards are provisioned via the sidecar from ConfigMaps
+# in platform/config (labelled grafana_datasource / grafana_dashboard).
+# ---------------------------------------------------------------------------
+grafana:
+  # Lab credential only. Production: grafana.admin.existingSecret (ADR-005).
+  adminPassword: "sre-platform-admin"
+  defaultDashboardsTimezone: browser
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits:   {cpu: 250m, memory: 256Mi}
+  sidecar:
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      labelValue: "1"
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+  # Enable derived-field trace correlation (Loki log -> Tempo trace).
+  grafana.ini:
+    feature_toggles:
+      enable: traceqlEditor
+
+# ---------------------------------------------------------------------------
+# Control-plane scrapers — trimmed for a single-node k3s (no HA control plane).
+# ---------------------------------------------------------------------------
+kubeControllerManager: {enabled: false}
+kubeScheduler:         {enabled: false}
+kubeProxy:             {enabled: false}
+kubeEtcd:              {enabled: false}
+
+nodeExporter:
+  enabled: true
+prometheus-node-exporter:
+  resources:
+    requests: {cpu: 25m, memory: 32Mi}
+    limits:   {cpu: 100m, memory: 64Mi}
+
+kube-state-metrics:
+  resources:
+    requests: {cpu: 25m, memory: 64Mi}
+    limits:   {cpu: 100m, memory: 128Mi}
+
+prometheusOperator:
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits:   {cpu: 200m, memory: 256Mi}

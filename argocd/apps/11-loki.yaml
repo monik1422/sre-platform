@@ -1,0 +1,30 @@
+---
+# Loki — log aggregation (the "L" in LGTM). Single-binary mode for a
+# single-node cluster; filesystem storage. Alloy (below) ships logs to it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: platform
+  sources:
+    - repoURL: "https://grafana.github.io/helm-charts"
+      chart: loki
+      targetRevision: 6.6.4
+      helm:
+        releaseName: loki
+        valueFiles:
+          - $values/platform/values/loki-values.yaml
+    - repoURL: "https://github.com/monik1422/sre-platform.git"
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions:
+      - ServerSideApply=true

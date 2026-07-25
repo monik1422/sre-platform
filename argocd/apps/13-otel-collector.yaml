@@ -1,0 +1,32 @@
+---
+# OpenTelemetry Collector (daemonset). Single collector handles two signal
+# paths on this single-node cluster:
+#   traces: apps push OTLP  -> Collector -> Tempo
+#   logs:   filelog preset tails container stdout -> Collector -> Loki (OTLP)
+# Metrics use the idiomatic Prometheus *pull* path (app /metrics -> ServiceMonitor),
+# so they are not routed through the Collector. See docs/architecture.md.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otel-collector
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"   # after Tempo/Loki exist
+spec:
+  project: platform
+  sources:
+    - repoURL: "https://open-telemetry.github.io/opentelemetry-helm-charts"
+      chart: opentelemetry-collector
+      targetRevision: 0.97.1
+      helm:
+        releaseName: otel-collector
+        valueFiles:
+          - $values/platform/values/otel-collector-values.yaml
+    - repoURL: "https://github.com/monik1422/sre-platform.git"
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}

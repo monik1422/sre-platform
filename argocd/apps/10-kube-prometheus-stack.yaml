@@ -1,0 +1,30 @@
+---
+# Prometheus (metrics + rule evaluation), Grafana (LGTM UI), Alertmanager.
+# Provides the ServiceMonitor / PrometheusRule CRDs that later waves rely on.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: platform
+  sources:
+    - repoURL: "https://prometheus-community.github.io/helm-charts"
+      chart: kube-prometheus-stack
+      targetRevision: 61.3.0
+      helm:
+        releaseName: kube-prometheus-stack
+        valueFiles:
+          - $values/platform/values/kube-prometheus-stack.yaml
+    - repoURL: "https://github.com/monik1422/sre-platform.git"
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions:
+      - ServerSideApply=true   # CRDs in this chart exceed the client-side apply annotation limit
