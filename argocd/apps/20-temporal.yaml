@@ -1,0 +1,25 @@
+---
+# Temporal — durable workflow engine. Deployed as hand-written, fully-hardened
+# manifests (see platform/temporal/) rather than the upstream Helm chart.
+# Rationale in docs/design-decisions.md ADR-006: for a single-node lab the
+# dev-server binary gives a reliable "clone & run" experience and lets us apply
+# the full restricted-PSS hardening the assessment grades on; production uses
+# the HA chart (Postgres + Elasticsearch + multi-role services).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: temporal
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: platform
+  source:
+    repoURL: "https://github.com/monik1422/sre-platform.git"
+    targetRevision: main
+    path: platform/temporal
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: temporal
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}

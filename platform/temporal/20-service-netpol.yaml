@@ -1,0 +1,54 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal
+  namespace: temporal
+  labels: {app.kubernetes.io/name: temporal, app.kubernetes.io/part-of: sre-platform}
+spec:
+  selector: {app.kubernetes.io/name: temporal}
+  ports:
+    - {name: grpc, port: 7233, targetPort: grpc}
+    - {name: http, port: 7243, targetPort: http}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-web
+  namespace: temporal
+  labels: {app.kubernetes.io/name: temporal, app.kubernetes.io/part-of: sre-platform}
+spec:
+  selector: {app.kubernetes.io/name: temporal}
+  ports:
+    - {name: ui, port: 8080, targetPort: ui}
+---
+# Default-deny ingress for the namespace, then allow only what we need.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: temporal
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-temporal-clients
+  namespace: temporal
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: temporal}
+  policyTypes: [Ingress]
+  ingress:
+    # gRPC frontend: the AI SRE worker (ai-sre ns) starts/queries workflows.
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: ai-sre}
+      ports:
+        - {protocol: TCP, port: 7233}
+        - {protocol: TCP, port: 7243}
+    # Web UI: reachable in-cluster (kubectl port-forward via the API server).
+    - ports:
+        - {protocol: TCP, port: 8080}
