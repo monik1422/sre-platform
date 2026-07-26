@@ -1,0 +1,59 @@
+---
+# Provisioned into Grafana by the kube-prometheus-stack sidecar (label match).
+# Wires the three LGTM datasources AND the cross-signal correlation that makes
+# observability actionable: Loki log -> Tempo trace via a derived field, and
+# Tempo trace -> Loki logs / Prometheus metrics via trace-to-logs/metrics.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources-lgtm
+  namespace: observability
+  labels:
+    grafana_datasource: "1"
+    app.kubernetes.io/part-of: sre-platform
+data:
+  lgtm-datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://kube-prometheus-stack-prometheus.observability.svc:9090
+        isDefault: true
+        jsonData:
+          timeInterval: 15s
+
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki.observability.svc:3100
+        jsonData:
+          # Turn a trace_id found in a log line into a clickable link to Tempo.
+          derivedFields:
+            - name: TraceID
+              matcherType: label
+              matcherRegex: "trace_id"
+              datasourceUid: tempo
+              url: "$${__value.raw}"
+
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://tempo.observability.svc:3100
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            spanStartTimeShift: "-5m"
+            spanEndTimeShift: "5m"
+            filterByTraceID: true
+            tags: [{key: "service.name", value: "service_name"}]
+          tracesToMetrics:
+            datasourceUid: prometheus
+            tags: [{key: "service.name", value: "service"}]
+          serviceMap:
+            datasourceUid: prometheus
+          nodeGraph:
+            enabled: true

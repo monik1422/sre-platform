@@ -1,0 +1,22 @@
+---
+# Platform configuration that depends on CRDs from the stacks above:
+# PrometheusRule (SLO + burn-rate alerts), Grafana datasources & dashboards,
+# and the default-deny NetworkPolicies for the observability namespace.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"   # needs PrometheusRule/ServiceMonitor CRDs
+spec:
+  project: platform
+  source:
+    repoURL: "https://github.com/monik1422/sre-platform.git"
+    targetRevision: main
+    path: platform/config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}

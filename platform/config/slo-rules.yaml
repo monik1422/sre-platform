@@ -1,0 +1,113 @@
+---
+# SLO definition for the sample-api service.
+#
+#   SLI (availability): fraction of HTTP requests NOT served as 5xx.
+#   SLO (target):       99.5% over a rolling 30-day window.
+#   Error budget:       0.5%.
+#
+# Alerting follows the Google SRE Workbook multi-window, multi-burn-rate
+# pattern: a fast-burn *page* (budget exhausted quickly) and a slow-burn
+# *ticket* (chronic degradation). Recording rules pre-compute error ratios so
+# both the alerts and the AI SRE agent read stable, named series.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sample-api-slo
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: sre-platform
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: sample-api.sli.recording
+      interval: 30s
+      rules:
+        - record: job:sample_api_request_errors:ratio_rate5m
+          expr: |
+            sum(rate(http_requests_total{service="sample-api",code=~"5.."}[5m]))
+              /
+            sum(rate(http_requests_total{service="sample-api"}[5m]))
+        - record: job:sample_api_request_errors:ratio_rate30m
+          expr: |
+            sum(rate(http_requests_total{service="sample-api",code=~"5.."}[30m]))
+              /
+            sum(rate(http_requests_total{service="sample-api"}[30m]))
+        - record: job:sample_api_request_errors:ratio_rate1h
+          expr: |
+            sum(rate(http_requests_total{service="sample-api",code=~"5.."}[1h]))
+              /
+            sum(rate(http_requests_total{service="sample-api"}[1h]))
+        - record: job:sample_api_request_errors:ratio_rate6h
+          expr: |
+            sum(rate(http_requests_total{service="sample-api",code=~"5.."}[6h]))
+              /
+            sum(rate(http_requests_total{service="sample-api"}[6h]))
+        - record: job:sample_api_latency_p95_seconds:5m
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum(rate(http_request_duration_seconds_bucket{service="sample-api"}[5m])) by (le)
+            )
+
+    - name: sample-api.slo.alerts
+      rules:
+        # --- Fast burn: at this rate the 30d budget is gone in < ~2 days. Page.
+        - alert: SampleApiErrorBudgetFastBurn
+          expr: |
+            job:sample_api_request_errors:ratio_rate5m  > (14.4 * 0.005)
+            and
+            job:sample_api_request_errors:ratio_rate1h  > (14.4 * 0.005)
+          for: 2m
+          labels:
+            severity: page
+            service: sample-api
+            slo: availability
+          annotations:
+            summary: "sample-api is burning its error budget fast (>14.4x)"
+            description: >
+              5m and 1h 5xx error ratios both exceed 14.4x the 0.5% budget.
+              At this rate the 30-day error budget is exhausted in ~2 days.
+            runbook_url: "https://github.com/monik1422/sre-platform/blob/main/docs/runbook.md#sampleapierrorbudgetfastburn"
+
+        # --- Slow burn: chronic degradation. Ticket, not a page.
+        - alert: SampleApiErrorBudgetSlowBurn
+          expr: |
+            job:sample_api_request_errors:ratio_rate30m > (6 * 0.005)
+            and
+            job:sample_api_request_errors:ratio_rate6h  > (6 * 0.005)
+          for: 15m
+          labels:
+            severity: ticket
+            service: sample-api
+            slo: availability
+          annotations:
+            summary: "sample-api error budget slow burn (>6x)"
+            description: >
+              30m and 6h 5xx error ratios both exceed 6x the budget — chronic
+              degradation that will exhaust the budget over days.
+            runbook_url: "https://github.com/monik1422/sre-platform/blob/main/docs/runbook.md#sampleapierrorbudgetslowburn"
+
+        # --- Latency SLO: p95 objective 300ms.
+        - alert: SampleApiLatencyHigh
+          expr: job:sample_api_latency_p95_seconds:5m > 0.3
+          for: 5m
+          labels:
+            severity: ticket
+            service: sample-api
+            slo: latency
+          annotations:
+            summary: "sample-api p95 latency above 300ms objective"
+            description: "p95 request latency has been > 300ms for 5 minutes."
+            runbook_url: "https://github.com/monik1422/sre-platform/blob/main/docs/runbook.md#sampleapilatencyhigh"
+
+        # --- Absence-of-signal: the target disappeared entirely.
+        - alert: SampleApiTargetDown
+          expr: up{service="sample-api"} == 0
+          for: 1m
+          labels:
+            severity: page
+            service: sample-api
+          annotations:
+            summary: "sample-api target is down"
+            description: "Prometheus cannot scrape any sample-api replica."
+            runbook_url: "https://github.com/monik1422/sre-platform/blob/main/docs/runbook.md#sampleapitargetdown"
