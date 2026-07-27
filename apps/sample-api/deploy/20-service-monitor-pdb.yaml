@@ -1,0 +1,41 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-api
+  namespace: sample-api
+  labels:
+    app.kubernetes.io/name: sample-api
+    app.kubernetes.io/part-of: sre-platform
+spec:
+  selector: {app.kubernetes.io/name: sample-api}
+  ports:
+    - {name: http, port: 80, targetPort: http}
+---
+# ServiceMonitor is the GitOps-native way to tell Prometheus what to scrape.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: sample-api
+  namespace: sample-api
+  labels:
+    app.kubernetes.io/name: sample-api
+    app.kubernetes.io/part-of: sre-platform
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: sample-api}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sample-api
+  namespace: sample-api
+  labels: {app.kubernetes.io/name: sample-api, app.kubernetes.io/part-of: sre-platform}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: sample-api}

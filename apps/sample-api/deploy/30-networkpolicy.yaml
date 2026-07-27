@@ -1,0 +1,42 @@
+---
+# Zero-trust baseline: deny everything, then open only required flows.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: sample-api
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sample-api
+  namespace: sample-api
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: sample-api}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        # Prometheus scrape from the observability namespace.
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: observability}}
+        # In-cluster fault injection (chaos pod runs in this namespace).
+        - podSelector: {}
+        # Optional probes from the AI SRE agent.
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ai-sre}}
+      ports:
+        - {protocol: TCP, port: 8080}
+  egress:
+    # DNS resolution.
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    # OTLP traces to the collector.
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: observability}}
+      ports:
+        - {protocol: TCP, port: 4317}
