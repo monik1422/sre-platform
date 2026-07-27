@@ -1,0 +1,19 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-api
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"   # after ServiceMonitor CRD + collector
+spec:
+  project: apps
+  source:
+    repoURL: "https://github.com/monik1422/sre-platform.git"
+    targetRevision: main
+    path: apps/sample-api/deploy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sample-api
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
