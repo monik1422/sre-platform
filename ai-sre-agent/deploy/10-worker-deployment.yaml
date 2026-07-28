@@ -1,0 +1,80 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-sre-agent-worker
+  namespace: ai-sre
+  labels:
+    app.kubernetes.io/name: ai-sre-agent
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: sre-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: ai-sre-agent, app.kubernetes.io/component: worker}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ai-sre-agent
+        app.kubernetes.io/component: worker
+        app.kubernetes.io/part-of: sre-platform
+    spec:
+      serviceAccountName: ai-sre-agent
+      automountServiceAccountToken: true   # needed for read-only Kube signals
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: worker
+          image: "ai-sre-agent:local"
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "temporal.worker"]
+          env:
+            - {name: TEMPORAL_TARGET, value: "temporal.temporal.svc:7233"}
+            - {name: TEMPORAL_NAMESPACE, value: "sre"}
+            - {name: TEMPORAL_TASK_QUEUE, value: "ai-sre"}
+            - {name: TARGET_SERVICE, value: "sample-api"}
+            - {name: TARGET_NAMESPACE, value: "sample-api"}
+            - {name: AI_SRE_MODEL, value: "claude-sonnet-5"}
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef: {name: anthropic-credentials, key: api-key}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits:   {cpu: 500m, memory: 256Mi}
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - |
+                  import os, socket
+                  h, p = os.environ.get("TEMPORAL_TARGET", "temporal.temporal.svc:7233").split(":")
+                  socket.create_connection((h, int(p)), timeout=3).close()
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - |
+                  import os, socket
+                  h, p = os.environ.get("TEMPORAL_TARGET", "temporal.temporal.svc:7233").split(":")
+                  socket.create_connection((h, int(p)), timeout=3).close()
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 6   # tolerate transient Temporal blips
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {}

@@ -1,0 +1,63 @@
+---
+# A suspended CronJob that serves as the template for on-demand RCA runs:
+#   kubectl create job -n ai-sre rca-now --from=cronjob/ai-sre-agent-rca
+# (this is what `make rca` does). Un-suspend + set a schedule to run RCAs
+# periodically, or leave suspended and drive it from alerts/Temporal.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ai-sre-agent-rca
+  namespace: ai-sre
+  labels:
+    app.kubernetes.io/name: ai-sre-agent
+    app.kubernetes.io/component: rca-job
+    app.kubernetes.io/part-of: sre-platform
+spec:
+  schedule: "0 3 * * *"     # placeholder; job is suspended
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: ai-sre-agent
+            app.kubernetes.io/component: rca-job
+        spec:
+          restartPolicy: Never
+          serviceAccountName: ai-sre-agent
+          automountServiceAccountToken: true
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            fsGroup: 65532
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: rca
+              image: "ai-sre-agent:local"
+              imagePullPolicy: IfNotPresent
+              command: ["python", "-m", "agent.cli", "rca", "--window", "15"]
+              env:
+                - {name: TARGET_SERVICE, value: "sample-api"}
+                - {name: TARGET_NAMESPACE, value: "sample-api"}
+                - {name: AI_SRE_MODEL, value: "claude-sonnet-5"}
+                - name: ANTHROPIC_API_KEY
+                  valueFrom:
+                    secretKeyRef: {name: anthropic-credentials, key: api-key}
+              resources:
+                requests: {cpu: 50m, memory: 128Mi}
+                limits:   {cpu: 500m, memory: 256Mi}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: ["ALL"]}
+              volumeMounts:
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - name: tmp
+              emptyDir: {}

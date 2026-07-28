@@ -1,0 +1,23 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-sre-agent
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: apps
+  source:
+    repoURL: "https://github.com/monik1422/sre-platform.git"
+    targetRevision: main
+    path: ai-sre-agent/deploy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ai-sre
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    # The anthropic-credentials secret is seeded out-of-band by bootstrap.sh
+    # (ADR-005). Argo CD must not prune it, so it is not tracked here.
+    syncOptions:
+      - RespectIgnoreDifferences=true
