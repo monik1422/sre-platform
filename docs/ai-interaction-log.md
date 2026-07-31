@@ -1,63 +1,59 @@
-# AI interaction log
+# AI Interaction Log
 
-This platform was built AI-first. This document is the **curated** log: the
-decisions and prompts that shaped the design, plus where the raw transcripts
-live. Keep it honest — reviewers can tell curated summaries from real sessions,
-so the full unedited chats are attached rather than paraphrased away.
+This platform was built and validated AI-first. This document is the **index**
+to the full session transcripts; the raw, unedited chat exports live alongside
+it in [`docs/transcripts/`](./transcripts/).
 
-## Tools used
-- **Claude (Anthropic)** — primary design & implementation partner: architecture,
-  all manifests, the Go service, and the AI SRE agent + Temporal workflows.
-- *(attach any others you used, e.g. Claude Code / Cursor / editor Copilot,
-  with their raw logs under `docs/transcripts/`.)*
+## How AI was used
 
-## How AI was leveraged (as an accelerator, not autopilot)
-1. **Architecture framing.** Asked the model to lay out signal paths and argue
-   the trade-off between "everything through OTLP" vs. idiomatic per-signal
-   paths. Chose pull-metrics / push-traces-logs (ADR-004) from that discussion.
-2. **GitOps skeleton.** Generated the app-of-apps + AppProject structure, then
-   hardened sync-waves so CRDs land before the resources that need them.
-3. **Code generation with review.** The Go service and Python agent were
-   generated, then I reviewed and corrected: OTel `codes.Error` import, semconv
-   version drift, and the structured-metadata trace-id extraction in Loki.
-4. **De-risking.** The model initially reached for the Temporal Helm chart; we
-   reasoned through its single-node fragility and switched to a hardened
-   dev-server deployment (ADR-006). Same for secrets (ADR-005).
-5. **Guardrails.** Forced the LLM's RCA output through Anthropic tool-use with a
-   pydantic-generated schema (ADR-008) so the agent is deterministic-shaped.
+I used AI (Anthropic's Claude) as an engineering partner across three distinct
+phases, and the transcripts are split to match:
 
-## Distilled decision log
-> The full turn-by-turn transcript is in `docs/transcripts/`. Highlights:
+1. **Design & architecture** — framing the component set, arguing trade-offs
+   (per-signal observability paths, app-of-apps vs. a monolith, RCA-as-workflow),
+   and settling the SLO/alerting model. The output of this phase is the ADR set
+   in [`design-decisions.md`](./design-decisions.md).
+2. **Implementation** — generating the GitOps manifests, the instrumented Go
+   service, and the Python AI SRE agent + Temporal workflows, then reviewing and
+   correcting the generated code (OTel imports, Loki label names, schema-forced
+   LLM output).
+3. **Live deployment & debugging** — bringing the whole stack up on a real
+   cluster. This was the most valuable phase: AI was used to root-cause and fix
+   a series of real, non-obvious failures (WSL2 kernel incompatibility, Argo CD
+   project scoping, a Helm/CRD ordering race, a wrong container image, and an
+   Argo-vs-Kubernetes schema-version skew). Every fix in this phase became a
+   real commit in the git history.
 
-- **Prompt:** "First Staff SRE at a B2B SaaS+AI startup — prove the full stack
-  locally on k3s, production-grade, with an AI SRE agent doing RCA against a
-  simulated failure." → produced the component list and the repo layout.
-- **Decision:** app-of-apps + two AppProjects for blast-radius isolation.
-- **Decision:** one OTel Collector daemonset (agent+gateway) on a single node;
-  documented the multi-node split.
-- **Decision:** SLO = 99.5% availability; multi-window multi-burn-rate alerts
-  (Google SRE workbook) rather than a naive threshold.
-- **Decision:** RCA as a durable Temporal workflow with per-activity retries;
-  SyntheticMonitor auto-triggers it — kills two requirements with one coherent
-  design (ADR-009).
-- **Fixes caught in review:** `go.sum` offline handling (ADR-007), Loki OTLP
-  label names (`service_name`), NetworkPolicy egress for the Anthropic call,
-  PSS-`restricted` compliance on every pod.
+AI was an accelerator, not an autopilot: I reviewed all generated code, made the
+architectural calls, and drove the debugging by feeding real cluster output back
+in and deciding which fix to apply. The transcripts include the dead ends and
+corrections, not just the clean path — that is the honest record of how the work
+actually happened.
 
-## Attaching raw transcripts
-Export each full session (Claude share link export, or copy the chat) into
-`docs/transcripts/NN-topic.md`. Do not trim them — the point is to show how AI
-was actually used, including the dead ends and corrections. Suggested files:
+## Transcripts
 
-```
-docs/transcripts/
-  01-architecture-and-scope.md
-  02-gitops-and-observability.md
-  03-sample-api-and-instrumentation.md
-  04-ai-sre-agent-and-temporal.md
-  05-review-and-fixes.md
-```
+| File | Phase | Covers |
+|---|---|---|
+| [`transcripts/01-build-session.md`](./transcripts/01-build-session.md) | Design + implementation | Architecture decisions, repo scaffolding, GitOps topology, observability stack, SLO/alerting, sample-api, AI SRE agent, Temporal workflows, and the packaging/git-history discussion. |
+| [`transcripts/02-deployment-debugging.md`](./transcripts/02-deployment-debugging.md) | Live deployment | Every defect hit while standing the platform up on k3d/WSL2 and its fix — chronological, with the exact error signatures and resolutions. |
 
-> Note for this submission: replace the bullet summaries above with, or
-> supplement them by, your verbatim exported chats. This file is the index;
-> the transcripts are the evidence.
+## Major defects found and fixed (summary)
+
+A condensed defect log; the full detail is in
+[`transcripts/02-deployment-debugging.md`](./transcripts/02-deployment-debugging.md).
+
+| # | Defect | Root cause | Fix | Commit |
+|---|---|---|---|---|
+| 1 | `bootstrap.sh` crashed reading kubeconfig | k3s writes `/etc/rancher/k3s/k3s.yaml` root-only (0600); script read it as non-root | Copy kubeconfig to `~/.kube/config` with user ownership | `fix(bootstrap): readable kubeconfig for non-root` |
+| 2 | k3s crash-looped on WSL2 | kubelet `system validation failed - wrong number of fields (expected 6, got 7)` — WSL2 `/proc/mountinfo` format vs. kubelet parser | Ran the identical k3s inside Docker via **k3d**, which uses the container's clean mount table | `docs: validated on k3d (WSL2)` / ADR-010 |
+| 3 | Argo root app stuck `Unknown` | `platform` AppProject `destinations` did not allow the `argocd` namespace where the root Application lives | Added `argocd` (and widened to `namespace: '*'`) in both projects | `fix(gitops): allow argocd + widen project destinations` |
+| 4 | `tempo` app `SyncError` — "tasks not valid" | ServiceMonitor (a `monitoring.coreos.com` CRD) rendered before/against a CRD the API server couldn't dry-run-validate (app-of-apps CRD race) | Added `SkipDryRunOnMissingResource=true` sync option | `fix(observability): skip dry-run on tempo ServiceMonitor (CRD race)` |
+| 5 | `temporal` pod `ImagePullBackOff` | Referenced image tag `temporalio/temporal:1.1.2` does not exist on Docker Hub | Corrected to the Temporal CLI image tag that provides `server start-dev` | `fix(temporal): correct image` |
+| 6 | `temporal` pod crash-loop after image fix | Used `temporalio/server`/`auto-setup` images whose config-templating entrypoint writes to `/etc/temporal/config` and is incompatible with `readOnlyRootFilesystem`; also does not accept `start-dev` args | Switched to the `temporalio/temporal` CLI image (native `start-dev`); removed the duplicate `--namespace` flag | `fix(temporal): use temporal CLI image for start-dev` |
+| 7 | `make status`/`make up` failed with `127.0.0.1:6443 refused` while `kubectl` worked | Makefile `export KUBECONFIG` inherited a stale k3s path from the shell | Pinned `export KUBECONFIG := $(HOME)/.kube/config` in the Makefile | `fix(makefile): pin kubeconfig for k3d` |
+| 8 | `chaos/run-scenario.sh` failed to inject fault | Port-forward not ready before the script `curl`ed it (timing race) | Wait/readiness before injecting; documented manual demo steps | `fix(chaos): wait for port-forward before injecting fault` |
+| 9 | `kube-prometheus-stack` stuck `Unknown` (Healthy) | Argo CD v2.11 schema predates k8s v1.35's new `.status.terminatingReplicas` field → structured-merge diff fails with `ComparisonError` | Upgrade Argo CD (v2.14) **or** `ignoreDifferences` on that field | `fix(argocd): k8s 1.35 schema compatibility` |
+
+> Every one of these was found by running the platform on a real cluster and
+> feeding the actual error output back through AI to root-cause it — which is
+> exactly the day-2 operational loop the AI SRE agent itself automates.
