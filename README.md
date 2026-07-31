@@ -6,10 +6,6 @@ Everything is GitOps-managed by Argo CD, fully observable (LGTM), and topped
 with an **AI SRE agent** that queries the observability stack and produces a
 structured root-cause analysis against a simulated failure.
 
-> Built as an engineering assessment. The bar was *production-grade, not a demo*:
-> RBAC, resource limits, health checks, namespace isolation, structured logging,
-> secrets management, and network policies throughout.
-
 ## What's inside
 
 | Component | What it does |
