@@ -28,3 +28,13 @@ spec:
     automated: {prune: true, selfHeal: true}
     syncOptions:
       - ServerSideApply=true
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/volumeClaimTemplates
+    - group: ""
+      kind: Secret
+      name: loki               # example — match what the diff shows
+      jsonPointers:
+        - /data
