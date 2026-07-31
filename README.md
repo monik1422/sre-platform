@@ -48,6 +48,9 @@ make up          # == ./bootstrap/bootstrap.sh
 make status      # Argo CD applications: Synced / Healthy
 ```
 
+<img width="776" height="373" alt="image" src="https://github.com/user-attachments/assets/159a4f0d-36a0-412d-913c-e6a4857e95e8" />
+
+
 Then explore:
 
 ```bash
