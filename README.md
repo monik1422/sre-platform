@@ -1,10 +1,10 @@
 # SRE Platform — local, production-grade, GitOps-driven
 
 A full cloud-native platform stack proved out **locally on k3s**, wired exactly
-the way it would run in production; the only difference is k3s instead of EKS.
+the way it would run in production; the only difference is that k3s is used instead of EKS.
 Everything is GitOps-managed by Argo CD, fully observable (LGTM), and topped
 with an **AI SRE agent** that queries the observability stack and produces a
-structured root-cause analysis against a simulated failure.
+structured root cause analysis of a simulated failure.
 
 | Component | What it does |
 |---|---|
@@ -15,6 +15,8 @@ structured root-cause analysis against a simulated failure.
 | **Temporal** | Durable workflow engine + Web UI |
 | **sample-api** | Go service emitting RED metrics, traces, and structured logs; `/fault` endpoint for deterministic failure injection |
 | **AI SRE agent** | Python agent (as a Temporal workflow) that gathers signals from all four backends, calls Claude, and emits a structured RCA report |
+
+<img width="1536" height="1024" alt="sre-platform-architecture" src="https://github.com/user-attachments/assets/cf986283-14ce-413f-b29a-b4aba40b264d" />
 
 ## Prerequisites
 A Linux host (or VM) with:
