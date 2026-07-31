@@ -31,3 +31,5 @@ apps/sample-api/vendor/
 # Generated RCA reports (keep the checked-in sample only)
 rca-reports/
 !sample-rca-report.md
+rca-demo.log
+*.log

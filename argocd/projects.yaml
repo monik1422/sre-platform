@@ -19,11 +19,13 @@ spec:
     - "https://open-telemetry.github.io/opentelemetry-helm-charts"
   destinations:
     - server: https://kubernetes.default.svc
-      namespace: "observability"
-    - server: https://kubernetes.default.svc
-      namespace: "temporal"
-    - server: https://kubernetes.default.svc
-      namespace: "platform-system"
+      namespace: "*"
+#    - server: https://kubernetes.default.svc
+#      namespace: "temporal"
+#    - server: https://kubernetes.default.svc
+#      namespace: "platform-system"
+#    - server: https://kubernetes.default.svc
+#      namespace: "argocd"
   clusterResourceWhitelist:
     - group: "*"
       kind: "*"
@@ -46,9 +48,9 @@ spec:
     - "https://github.com/monik1422/sre-platform.git"
   destinations:
     - server: https://kubernetes.default.svc
-      namespace: "sample-api"
-    - server: https://kubernetes.default.svc
-      namespace: "ai-sre"
+      namespace: "*"
+#    - server: https://kubernetes.default.svc
+#      namespace: "ai-sre"
   # Product apps may not create cluster-scoped resources — namespaced only.
   clusterResourceWhitelist: []
   namespaceResourceWhitelist:
