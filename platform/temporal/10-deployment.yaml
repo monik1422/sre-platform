@@ -29,7 +29,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: temporal
-          image: "temporalio/temporal:1.1.2"   # Temporal CLI image (see README: version pins)
+          image: "temporalio/server:1.25.1"   # Temporal CLI image (see README: version pins)
           args:
             - "server"
             - "start-dev"
@@ -37,7 +37,7 @@ spec:
             - "--port=7233"
             - "--http-port=7243"
             - "--ui-port=8080"
-            - "--namespace=default"
+#            - "--namespace=default"
             - "--namespace=sre"          # dedicated namespace for our workflows
             - "--db-filename=/data/temporal.db"
             - "--log-level=info"
