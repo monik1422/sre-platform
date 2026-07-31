@@ -54,7 +54,7 @@ make grafana           # http://localhost:3000   (admin / sre-platform-admin)
 make temporal-ui       # http://localhost:8088
 ```
 
-## The AI SRE demo (the differentiator)
+## The AI SRE demo 
 
 ```bash
 make demo
@@ -126,7 +126,7 @@ Chart, image, and tool versions are pinned to known-good-at-authoring values
 pin has aged out by the time you bootstrap, bump it in the relevant
 `argocd/apps/*.yaml` or values file — the structure is unaffected.
 
-## Roadmap (what I'd build next)
+## Roadmap
 
 1. **Secrets:** External Secrets Operator + a real secret manager; Sealed
    Secrets for anything that must live in Git.
