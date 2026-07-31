@@ -56,8 +56,20 @@ Then explore:
 ```bash
 make argocd-password   # initial admin password
 make argocd-ui         # https://localhost:8080  (user: admin)
+
+<img width="1918" height="963" alt="image" src="https://github.com/user-attachments/assets/1d6279df-08f3-47d1-8a48-471332351d46" />
+
+
 make grafana           # http://localhost:3000   (admin / sre-platform-admin)
+
+<img width="1917" height="957" alt="image" src="https://github.com/user-attachments/assets/064d0709-e85f-4b42-a634-1e4611264997" />
+
+
 make temporal-ui       # http://localhost:8088
+
+<img width="1903" height="970" alt="image" src="https://github.com/user-attachments/assets/940a3d1a-16b4-4ea5-b1c6-27a20f14c96d" />
+
+
 ```
 
 ## The AI SRE demo 
