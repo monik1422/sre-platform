@@ -1,0 +1,160 @@
+{"level":"INFO","logger":"httpx","msg":"HTTP Request: GET http://kube-prometheus-stack-alertmanager.observability.svc:9093/api/v2/alerts?active=true&silenced=false&inhibited=false "HTTP/1.1 200 OK""}
+{"level":"INFO","logger":"httpx","msg":"HTTP Request: GET http://kube-prometheus-stack-prometheus.observability.svc:9090/api/v1/query?query=sum%28rate%28http_requests_total%7Bservice%3D%22sample-api%22%7D%5B1m%5D%29%29 "HTTP/1.1 200 OK""}
+{"level":"INFO","logger":"httpx","msg":"HTTP Request: GET http://kube-prometheus-stack-prometheus.observability.svc:9090/api/v1/query?query=job%3Asample_api_request_errors%3Aratio_rate5m "HTTP/1.1 200 OK""}
+{"level":"INFO","logger":"httpx","msg":"HTTP Request: GET http://kube-prometheus-stack-prometheus.observability.svc:9090/api/v1/query?query=job%3Asample_api_request_errors%3Aratio_rate1h "HTTP/1.1 200 OK""}
+{"level":"INFO","logger":"httpx","msg":"HTTP Request: GET http://kube-prometheus-stack-prometheus.observability.svc:9090/api/v1/query?query=job%3Asample_api_latency_p95_seconds%3A5m "HTTP/1.1 200 OK""}
+{"level":"INFO","logger":"httpx","msg":"HTTP Request: GET http://kube-prometheus-stack-prometheus.observability.svc:9090/api/v1/query?query=sum%28up%7Bservice%3D%22sample-api%22%7D%29 "HTTP/1.1 200 OK""}
+{"level":"INFO","logger":"httpx","msg":"HTTP Request: GET http://loki.observability.svc:3100/loki/api/v1/query_range?query=%7Bservice_name%3D%22sample-api%22%7D%20%7C~%20%60%28%3Fi%29error%7Cfault%7Cpanic%7Cexception%60&start=1785471399022297088&end=1785472299022297088&limit=25&direction=backward "HTTP/1.1 200 OK""}
+{"level":"INFO","logger":"httpx","msg":"HTTP Request: GET http://tempo.observability.svc:3100/api/search?q=%7B%20resource.service.name%3D%22sample-api%22%20%26%26%20status%20%3D%20error%20%7D&start=1785471399&end=1785472299&limit=10 "HTTP/1.1 200 OK""}
+{"level":"INFO","logger":"httpx","msg":"HTTP Request: GET http://tempo.observability.svc:3100/api/search?q=%7B%20resource.service.name%3D%22sample-api%22%20%7D%20%7C%20select%28duration%29&start=1785471399&end=1785472299&limit=10 "HTTP/1.1 200 OK""}
+{"level":"INFO","logger":"httpx","msg":"HTTP Request: GET https://10.43.0.1/api/v1/namespaces/sample-api/pods?labelSelector=app.kubernetes.io/name=sample-api "HTTP/1.1 200 OK""}
+{"level":"INFO","logger":"httpx","msg":"HTTP Request: GET https://10.43.0.1/api/v1/namespaces/sample-api/events?fieldSelector=type=Warning "HTTP/1.1 200 OK""}
+{"level":"INFO","logger":"agent.signals","msg":"gathered signals: 4 alerts, 6 metrics, 0 logs, 0 traces, 0 kube"}
+{"level":"WARNING","logger":"agent.rca","msg":"DRY_RUN (no ANTHROPIC_API_KEY): emitting heuristic RCA skeleton"}
+# RCA — sample-api: elevated error rate (burn 62.09x)
+
+| Field | Value |
+|---|---|
+| Service | `sample-api` |
+| Severity | **SEV1** |
+| Confidence | medium |
+| Generated | 2026-07-31 04:31:40Z |
+| Evidence window | 15 min |
+
+## Summary
+Elevated 5xx error rate. Error logs and error spans correlate with the metric spike, indicating application-level failures (consistent with an injected/failing dependency).
+
+## Symptom
+error_ratio_5m=0.31401, p95=0.975s, burn_rate_1h=62.09x, targets_up=2.0
+
+## Root cause
+Elevated 5xx error rate. Error logs and error spans correlate with the metric spike, indicating application-level failures (consistent with an injected/failing dependency).
+
+## Evidence
+- request_rate_1m = 0.0 req/s
+- error_ratio_5m = 0.31401 ratio
+- error_ratio_1h = 0.310433 ratio
+- latency_p95_5m = 0.975 s
+- targets_up = 2.0 count
+- error_budget_burn_rate_1h = 62.09 x
+- firing alert: SampleApiErrorBudgetFastBurn (page)
+- firing alert: CPUThrottlingHigh (info)
+- firing alert: Watchdog (none)
+- firing alert: SampleApiLatencyHigh (ticket)
+
+## Remediation
+1. **[immediate]** Confirm the anomaly in Grafana (sample-api RED dashboard) and identify the first affected timestamp.
+   - _why:_ Anchor the investigation to a concrete onset time.
+2. **[immediate]** If fault injection is active, clear it: `make chaos-clear`. Otherwise roll back the most recent sample-api deploy.
+   - _why:_ Fastest path to restore the SLI while root cause is confirmed.
+
+## Prevention (Day-2)
+- Add a canary/synthetic check (Temporal SyntheticMonitor) to detect this class of failure before users do.
+
+---
+### Appendix: raw signals
+<details><summary>Gathered signal bundle</summary>
+
+```json
+{
+  "collected_at": "2026-07-31T04:31:40.110055+00:00",
+  "service": "sample-api",
+  "namespace": "sample-api",
+  "window_minutes": 15,
+  "alerts": [
+    {
+      "name": "SampleApiErrorBudgetFastBurn",
+      "severity": "page",
+      "state": "active",
+      "summary": "sample-api is burning its error budget fast (>14.4x)",
+      "description": "5m and 1h 5xx error ratios both exceed 14.4x the 0.5% budget. At this rate the 30-day error budget is exhausted in ~2 days.\n",
+      "labels": {
+        "alertname": "SampleApiErrorBudgetFastBurn",
+        "prometheus": "observability/kube-prometheus-stack-prometheus",
+        "service": "sample-api",
+        "severity": "page",
+        "slo": "availability"
+      }
+    },
+    {
+      "name": "CPUThrottlingHigh",
+      "severity": "info",
+      "state": "active",
+      "summary": "Processes experience elevated CPU throttling.",
+      "description": "50.23% throttling of CPU in namespace observability for container node-exporter in pod kube-prometheus-stack-prometheus-node-exporter-jjdtc.",
+      "labels": {
+        "alertname": "CPUThrottlingHigh",
+        "container": "node-exporter",
+        "namespace": "observability",
+        "pod": "kube-prometheus-stack-prometheus-node-exporter-jjdtc",
+        "prometheus": "observability/kube-prometheus-stack-prometheus",
+        "severity": "info"
+      }
+    },
+    {
+      "name": "Watchdog",
+      "severity": "none",
+      "state": "active",
+      "summary": "An alert that should always be firing to certify that Alertmanager is working properly.",
+      "description": "This is an alert meant to ensure that the entire alerting pipeline is functional.\nThis alert is always firing, therefore it should always be firing in Alertmanager\nand always fire against a receiver. There are integrations with various notification\nmechanisms that send a notification when this alert is not firing. For example the\n\"DeadMansSnitch\" integration in PagerDuty.\n",
+      "labels": {
+        "alertname": "Watchdog",
+        "prometheus": "observability/kube-prometheus-stack-prometheus",
+        "severity": "none"
+      }
+    },
+    {
+      "name": "SampleApiLatencyHigh",
+      "severity": "ticket",
+      "state": "active",
+      "summary": "sample-api p95 latency above 300ms objective",
+      "description": "p95 request latency has been > 300ms for 5 minutes.",
+      "labels": {
+        "alertname": "SampleApiLatencyHigh",
+        "prometheus": "observability/kube-prometheus-stack-prometheus",
+        "service": "sample-api",
+        "severity": "ticket",
+        "slo": "latency"
+      }
+    }
+  ],
+  "metrics": [
+    {
+      "name": "request_rate_1m",
+      "value": 0.0,
+      "unit": "req/s"
+    },
+    {
+      "name": "error_ratio_5m",
+      "value": 0.31401,
+      "unit": "ratio"
+    },
+    {
+      "name": "error_ratio_1h",
+      "value": 0.310433,
+      "unit": "ratio"
+    },
+    {
+      "name": "latency_p95_5m",
+      "value": 0.975,
+      "unit": "s"
+    },
+    {
+      "name": "targets_up",
+      "value": 2.0,
+      "unit": "count"
+    },
+    {
+      "name": "error_budget_burn_rate_1h",
+      "value": 62.09,
+      "unit": "x"
+    }
+  ],
+  "logs": [],
+  "traces": [],
+  "kube": []
+}
+```
+</details>
+
+_Generated by the AI SRE agent. Confidence reflects signal quality; a human on-call should confirm before destructive remediation._
