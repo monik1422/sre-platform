@@ -53,7 +53,6 @@ make status      # Argo CD applications: Synced / Healthy
 
 Then explore:
 
-```bash
 make argocd-password   # initial admin password
 make argocd-ui         # https://localhost:8080  (user: admin)
 
@@ -69,8 +68,6 @@ make temporal-ui       # http://localhost:8088
 
 <img width="1903" height="970" alt="image" src="https://github.com/user-attachments/assets/940a3d1a-16b4-4ea5-b1c6-27a20f14c96d" />
 
-
-```
 
 ## The AI SRE demo 
 
