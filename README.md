@@ -85,7 +85,7 @@ burn-rate rules, then runs the AI SRE agent **in-cluster**. The agent:
    tool so the output is schema-valid;
 3. prints a structured RCA (see [`sample-rca-report.md`](sample-rca-report.md)).
 
-Without a key it runs in **dry-run**: same gather + a deterministic heuristic
+Without a key, it runs in **dry-run**: same gather + a deterministic heuristic
 RCA, so the pipeline is demonstrable offline.
 
 Run individual steps:
@@ -119,6 +119,11 @@ ai-sre-agent/     Python agent (clients, LLM, RCA) + Temporal worker/workflows
 chaos/            fault injection + guided demo scripts
 docs/             architecture, design decisions (ADRs), runbook, AI log
 ```
+
+GIT COMMIT LOGS -->
+
+<img width="1256" height="762" alt="image" src="https://github.com/user-attachments/assets/c43c9a71-387c-44e7-b27f-af85022599fc" />
+
 
 ## Design decisions & trade-offs
 
