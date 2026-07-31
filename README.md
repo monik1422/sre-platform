@@ -26,6 +26,9 @@ A Linux host (or VM) with:
 - ~4 vCPU / 6 GB RAM free
 - outbound internet (Helm repos, container images, and the Anthropic API)
 
+<img width="848" height="347" alt="image" src="https://github.com/user-attachments/assets/894bbcb3-9bfe-47a9-8da5-158720323af3" />
+
+
 ## Quick start
 
 ```bash
