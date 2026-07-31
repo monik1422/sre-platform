@@ -5,8 +5,7 @@ SHELL      := /usr/bin/env bash
 .SHELLFLAGS := -euo pipefail -c
 .DEFAULT_GOAL := help
 
-KUBECONFIG ?= $(HOME)/.kube/config-sre-platform
-export KUBECONFIG
+export KUBECONFIG := $(HOME)/.kube/config
 
 ARGOCD_NS  := argocd
 AGENT_NS   := ai-sre
