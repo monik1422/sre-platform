@@ -29,7 +29,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: temporal
-          image: "temporalio/server:1.25.1"   # Temporal CLI image (see README: version pins)
+          image: "temporalio/latest"   # Temporal CLI image (see README: version pins)
           args:
             - "server"
             - "start-dev"
