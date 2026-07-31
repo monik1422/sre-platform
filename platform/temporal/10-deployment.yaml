@@ -29,7 +29,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: temporal
-          image: "temporalio/server:1.25.1"   # Temporal CLI image (see README: version pins)
+          image: "temporalio/temporal:latest"   # Temporal CLI image (see README: version pins)
           args:
             - "server"
             - "start-dev"
@@ -63,12 +63,11 @@ spec:
           volumeMounts:
             - {name: data, mountPath: /data}
             - {name: tmp,  mountPath: /tmp}
-            - {name: config, mountPath: /etc/temporal/config}
+#            - {name: config, mountPath: /etc/temporal/config}
       volumes:
         - name: data
-          persistentVolumeClaim:
-            claimName: temporal-data
+          emptyDir: {}
         - name: tmp
           emptyDir: {}
-        - name: config
-          emptyDir: {}
+#        - name: config
+#          emptyDir: {}
